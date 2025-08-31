@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@react-three/postprocessing": "^3.0.4",
     "next": "15.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
