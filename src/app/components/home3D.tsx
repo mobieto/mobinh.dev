@@ -6,12 +6,12 @@ import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js"
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js"
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-import { getFrustumEdgesAtZ , calculateRepulsion, getSkyGradient } from "@/lib/three";
+import { getFrustumEdgesAtZ , calculateRepulsion, getSkyGradient, calculateParticleCount } from "@/lib/three";
 import { useMousePosition } from "@/lib/mouse";
 import { randomGaussian } from "@/lib/math";
 import { holographicRainbowFrag, holographicRainbowFragReplace } from "@/lib/shaders/holographic_rainbow_frag";
+import { spawn } from "child_process";
 
 export default function ThreeText() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -28,7 +28,7 @@ export default function ThreeText() {
     if (!mountRef.current) return;
 
     const mainScene = new THREE.Scene();
-    const bloomScene = new THREE.Scene();
+
     const camera = new THREE.PerspectiveCamera(
       75,
       mountRef.current.clientWidth / mountRef.current.clientHeight,
@@ -40,15 +40,9 @@ export default function ThreeText() {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     const renderPass = new RenderPass(mainScene, camera);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-
-    const bloomComposer = new EffectComposer(renderer);
-    bloomComposer.addPass(new RenderPass(bloomScene, camera));
-    bloomComposer.addPass(bloomPass);
-
     const mainComposer = new EffectComposer(renderer);
-    mainComposer.addPass(renderPass);
 
+    mainComposer.addPass(renderPass);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
     mountRef.current.appendChild(renderer.domElement);
@@ -75,50 +69,53 @@ export default function ThreeText() {
     mainScene.add(sky);
 
     const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 4000;
+    const particlesCount = calculateParticleCount(mountRef.current.clientWidth, mountRef.current.clientHeight);
     const positionBuffer = new Float32Array(particlesCount * 3);
     const colorBuffer = new Float32Array(particlesCount * 4);
     const particleSpeeds = new Float32Array(particlesCount);
     const visibleArea = getFrustumEdgesAtZ(camera, 0);
 
-    // Particle spawning
-    for (let i = 0; i < particlesCount; i++) {
-      const centerX = (visibleArea.left + visibleArea.right) / 2;
-      const centerY = (visibleArea.top + visibleArea.bottom) / 2;
-      const widthStdDev = (visibleArea.right - visibleArea.left) / 4;
-      const heightStdDev = (visibleArea.top - visibleArea.bottom) / 4;
+    const spawnParticles = (p_count: number) => {
+      for (let i = 0; i < p_count; i++) {
+        const centerX = (visibleArea.left + visibleArea.right) / 2;
+        const centerY = (visibleArea.top + visibleArea.bottom) / 2;
+        const widthStdDev = (visibleArea.right - visibleArea.left) / 4;
+        const heightStdDev = (visibleArea.top - visibleArea.bottom) / 4;
 
-      // Generate positions using Gaussian distribution
-      positionBuffer[i * 3] = randomGaussian(centerX, widthStdDev);
-      positionBuffer[i * 3 + 1] = randomGaussian(centerY, heightStdDev);
-      positionBuffer[i * 3 + 2] = (Math.random() * -40) - -40;
-      particleSpeeds[i] = (Math.random() * 0.12) + 0.05; // Z Speed
-      colorBuffer[i * 4] = 255; // R
-      colorBuffer[i * 4 + 1] = 255; // G
-      colorBuffer[i * 4 + 2] = 255; // B
-      colorBuffer[i * 4 + 3] = 0; // A
+        // Generate positions using Gaussian distribution
+        positionBuffer[i * 3] = randomGaussian(centerX, widthStdDev);
+        positionBuffer[i * 3 + 1] = randomGaussian(centerY, heightStdDev);
+        positionBuffer[i * 3 + 2] = (Math.random() * -40) - -40;
+        particleSpeeds[i] = (Math.random() * 0.12) + 0.05; // Z Speed
+        colorBuffer[i * 4] = 255; // R
+        colorBuffer[i * 4 + 1] = 255; // G
+        colorBuffer[i * 4 + 2] = 255; // B
+        colorBuffer[i * 4 + 3] = 0; // A
+      }
     }
+
+    spawnParticles(particlesCount);
 
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positionBuffer, 3));
     particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorBuffer, 4));
 
+    const textureLoader = new THREE.TextureLoader();
+    const particleTexture = textureLoader.load("/img/circle.png");
     const particlesMaterial = new THREE.PointsMaterial({
         size: 0.05,
         color: 0xffffff,
         transparent: true,
         vertexColors: true,
         depthWrite: false,
-        toneMapped: false,
+        map: particleTexture,
     });
-
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
 
     mainScene.add(particlesMesh);
 
     // Load font + create text
-    const loader = new FontLoader();
-
-    loader.load("/three_fonts/Lexend_Giga_Regular.json", (font) => {
+    const fontLoader = new FontLoader();
+    fontLoader.load("/three_fonts/Lexend_Giga_Regular.json", (font) => {
       const textGeometry = new TextGeometry("mobinh.dev", {
         font: font,
         size: 3,
@@ -171,10 +168,10 @@ export default function ThreeText() {
       textMesh.position.z = -25;
 
       mainScene.add(textMesh);
-      bloomScene.add(textMesh.clone());
 
-      const animate = () => {
-        requestAnimationFrame(animate);
+      // Animate text mesh after it's loaded
+      const textAnimation = () => {
+        requestAnimationFrame(textAnimation);
 
         if (material.userData.shader) {
           material.userData.shader.uniforms.time.value = performance.now() * 0.001;
@@ -188,59 +185,66 @@ export default function ThreeText() {
           textMesh.rotation.x = yNorm * -0.1;
         }
 
-        // Animate particles
-        const positions = particlesGeometry.attributes.position.array;
-        const colors = particlesGeometry.attributes.color.array;
-        const visibleArea = getFrustumEdgesAtZ(camera, -25);
+        mainComposer.render();
+      };
 
-        for (let i = 0; i < particlesCount; i++) {
-            const positionIndex = i * 3;
-            const colorIndex = i * 4;
+      textAnimation();
+    });
 
-            const [repulsionX, repulsionY] = calculateRepulsion(
-              positions[positionIndex],
-              positions[positionIndex + 1],
-              positions[positionIndex + 2],
-              mouseRef.current.x,
-              mouseRef.current.y,
-              camera,
-            );
+    const particlesAnimation = () => {
+      requestAnimationFrame(particlesAnimation);
 
-            // Move particles slowly
-            positions[positionIndex + 2] += particleSpeeds[i];
+      // Animate particles
+      const positions = particlesGeometry.attributes.position.array;
+      const colors = particlesGeometry.attributes.color.array;
+      const visibleArea = getFrustumEdgesAtZ(camera, -25);
 
-            // Apply attractive force to mouse
-            positions[positionIndex] += repulsionX;
-            positions[positionIndex + 1] += repulsionY;
+      for (let i = 0; i < particlesCount; i++) {
+        const positionIndex = i * 3;
+        const colorIndex = i * 4;
 
-            // Fade in particles
-            if (colors[colorIndex + 3] < 1) {
-                colors[colorIndex + 3] += 0.005;
-            }
+        const [repulsionX, repulsionY] = calculateRepulsion(
+          positions[positionIndex],
+          positions[positionIndex + 1],
+          positions[positionIndex + 2],
+          mouseRef.current.x,
+          mouseRef.current.y,
+          camera,
+        );
 
-            // Wrap around when particles go too far
-            if (positions[positionIndex + 2] > 0) {
-                const centerX = (visibleArea.right + visibleArea.left) / 2;
-                const centerY = (visibleArea.top + visibleArea.bottom) / 2;
-                const widthStdDev = (visibleArea.right - visibleArea.left) / 4;
-                const heightStdDev = (visibleArea.top - visibleArea.bottom) / 4;
-                
-                positions[positionIndex] = randomGaussian(centerX, widthStdDev);
-                positions[positionIndex + 1] = randomGaussian(centerY, heightStdDev);
-                positions[positionIndex + 2] = (Math.random() * -40) - 40;
-                colors[colorIndex + 3] = 0;
-            }
+        // Move particles slowly
+        positions[positionIndex + 2] += particleSpeeds[i];
+
+        // Apply attractive force to mouse
+        positions[positionIndex] += repulsionX;
+        positions[positionIndex + 1] += repulsionY;
+
+        // Fade in particles
+        if (colors[colorIndex + 3] < 1) {
+            colors[colorIndex + 3] += 0.005;
         }
 
-        particlesGeometry.attributes.position.needsUpdate = true;
-        particlesGeometry.attributes.color.needsUpdate = true;
-
-        bloomComposer.render();
-        mainComposer.render();
+        // Wrap around when particles go too far
+        if (positions[positionIndex + 2] > 0) {
+          const centerX = (visibleArea.right + visibleArea.left) / 2;
+          const centerY = (visibleArea.top + visibleArea.bottom) / 2;
+          const widthStdDev = (visibleArea.right - visibleArea.left) / 4;
+          const heightStdDev = (visibleArea.top - visibleArea.bottom) / 4;
+          
+          positions[positionIndex] = randomGaussian(centerX, widthStdDev);
+          positions[positionIndex + 1] = randomGaussian(centerY, heightStdDev);
+          positions[positionIndex + 2] = (Math.random() * -40) - 40;
+          colors[colorIndex + 3] = 0;
+        }
       }
 
-      animate();
-    });
+      particlesGeometry.attributes.position.needsUpdate = true;
+      particlesGeometry.attributes.color.needsUpdate = true;
+
+      mainComposer.render();
+    }
+
+    particlesAnimation();
 
     // Handle window resize
     const handleResize = () => {
@@ -248,12 +252,12 @@ export default function ThreeText() {
   
       const width = mountRef.current.clientWidth;
       const height = mountRef.current.clientHeight;
-      
+    
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      
+
+      renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(width, height);
-      bloomComposer.setSize(width, height);
       mainComposer.setSize(width, height);
     };
 
