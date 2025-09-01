@@ -195,8 +195,8 @@ export const getSkyGradient = (
 export const calculateParticleCount = (width: number, height: number) => {
     const screenArea = width * height;
     const baseArea = 1920 * 1080; // Base resolution
-    const baseCount = 2500;
+    const baseCount = 3500;
 
     const count = Math.floor((screenArea / baseArea) * baseCount);
-    return Math.min(Math.max(count, 1000), 3000); // Min 1000, Max 3000
+    return Math.min(Math.max(count, 1000), 3500); // Min 1000, Max 3000
 };
