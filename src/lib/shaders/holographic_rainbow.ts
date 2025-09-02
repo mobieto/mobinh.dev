@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-export const HolographicShaderOverride = (material: THREE.MeshPhysicalMaterial, currentShader: THREE.WebGLProgramParametersWithUniforms) => {
+export const HolographicShaderOverride = (material: THREE.MeshBasicMaterial, currentShader: THREE.WebGLProgramParametersWithUniforms) => {
     currentShader.uniforms.time = { value: 0 };
 
     currentShader.vertexShader = currentShader.vertexShader.replace(
@@ -71,13 +71,13 @@ export const HolographicShaderOverride = (material: THREE.MeshPhysicalMaterial, 
             float hue3 = baseHue + noise3 * 0.2 + t * 0.2;
             
             // Create three different color patterns
-            vec3 color1 = hsv2rgb(vec3(hue1, 1, 2));
-            vec3 color2 = hsv2rgb(vec3(hue2 + 0.33, 0.8, 1.8));
-            vec3 color3 = hsv2rgb(vec3(hue3 + 0.66, 0.8, 1.9));
+            vec3 color1 = hsv2rgb(vec3(hue1, 1.0, 0.9));
+            vec3 color2 = hsv2rgb(vec3(hue2 + 0.33, 0.8, 0.85));
+            vec3 color3 = hsv2rgb(vec3(hue3 + 0.66, 0.8, 0.9));
             
             // Mix colors based on position and noise
-            float mixFactor1 = sin(vUv.y * 6.28 + noise1 * 3.0) * 0.5 + 0.5;
-            float mixFactor2 = cos(vUv.x * 6.28 + noise2 * 3.0) * 0.5 + 0.5;
+            float mixFactor1 = sin(vUv.y * 6.8 + noise1 * 2.3) * 0.5 + 0.5;
+            float mixFactor2 = cos(vUv.x * 6.8 + noise2 * 2.3) * 0.5 + 0.5;
             
             vec3 finalColor = mix(
                 color1,
@@ -88,15 +88,28 @@ export const HolographicShaderOverride = (material: THREE.MeshPhysicalMaterial, 
             // Add position-dependent shimmer
             float shimmer = pow(sin(noise1 * 10.0 + t * 3.0) * 0.5 + 0.5, 1.2);
             shimmer *= sin(vUv.x * 10.0) * 0.5 + 0.5; // Horizontal shimmer bands
-            finalColor += shimmer * 1.2;
+            finalColor += shimmer * 0.3;
             
             // Overall brightness
-            finalColor *= 1.5;
+            finalColor *= 0.87;
             
             vec4 diffuseColor = vec4(finalColor, opacity);
             `
         )}
     `;
+
+    currentShader.fragmentShader = currentShader.fragmentShader.replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+        normal = normalize(normal);`
+    );
+
+    // Vertex: right after computing objectNormal
+    currentShader.vertexShader = currentShader.vertexShader.replace(
+        '#include <beginnormal_vertex>',
+        `#include <beginnormal_vertex>
+        objectNormal = normalize(objectNormal);`
+    );
 
     material.userData.shader = currentShader;
 };

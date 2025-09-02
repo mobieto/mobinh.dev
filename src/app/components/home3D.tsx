@@ -44,15 +44,15 @@ export default function ThreeText() {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
-
+    
     const renderPass = new RenderPass(mainScene, camera);
     const mainComposer = new EffectComposer(renderer);
     const vignettePass = new ShaderPass(VignetteShader);
-    const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 0.5, 0.75, 0.85 );
+    const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 0.38, 0.75, 0.85 );
     const outputPass = new OutputPass();
 
-    vignettePass.uniforms.offset.value = 1;
-    vignettePass.uniforms.darkness.value = 1.12;
+    vignettePass.uniforms.offset.value = 0.67;
+    vignettePass.uniforms.darkness.value = 1.08;
 
     mainComposer.addPass(renderPass);
     mainComposer.addPass(bloomPass);
@@ -114,14 +114,15 @@ export default function ThreeText() {
 
     const textureLoader = new THREE.TextureLoader();
     const particleTexture = textureLoader.load("/img/circle.png");
+
     const particlesMaterial = new THREE.PointsMaterial({
-        size: 0.05,
+        map: particleTexture,
+        size: 0.08,
         color: 0xffffff,
         transparent: true,
         vertexColors: true,
         depthWrite: false,
-        map: particleTexture,
-        blending: THREE.NormalBlending,
+        blending: THREE.AdditiveBlending,
         opacity: 1,
     });
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
@@ -145,15 +146,8 @@ export default function ThreeText() {
 
       textGeometry.center();
 
-      const material = new THREE.MeshPhysicalMaterial({
+      const material = new THREE.MeshBasicMaterial({
         color: 0xffffff,
-        metalness: 0.9,
-        roughness: 0.2,
-        envMapIntensity: 1.7,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: 0.1
       });
 
       material.onBeforeCompile = HolographicShaderOverride.bind(null, material);
