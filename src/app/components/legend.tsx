@@ -16,7 +16,7 @@ import { useMousePosition } from "@/lib/mouse";
 import { randomGaussian } from "@/lib/math";
 import { HolographicShaderOverride } from "@/lib/shaders/holographic_rainbow";
 
-export default function ThreeText() {
+export default function Legend() {
   const mountRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const mouse = useMousePosition();
@@ -51,8 +51,8 @@ export default function ThreeText() {
     const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 0.38, 0.75, 0.85 );
     const outputPass = new OutputPass();
 
-    vignettePass.uniforms.offset.value = 0.67;
-    vignettePass.uniforms.darkness.value = 1.08;
+    vignettePass.uniforms.offset.value = 0.8;
+    vignettePass.uniforms.darkness.value = 1.05;
 
     mainComposer.addPass(renderPass);
     mainComposer.addPass(bloomPass);
@@ -78,7 +78,11 @@ export default function ThreeText() {
     rimLight.position.set(0, 5, -30);
     mainScene.add(rimLight);
 
-    const sky = getSkyGradient(new THREE.Color(0x111112), new THREE.Color(0x27273b), 2000);
+    const sky = getSkyGradient(
+      new THREE.Color(0x111112), 
+      new THREE.Color(0x27273b), 
+      2000
+    );
     mainScene.add(sky);
 
     const particlesGeometry = new THREE.BufferGeometry();

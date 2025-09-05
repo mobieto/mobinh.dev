@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-export const HolographicShaderOverride = (material: THREE.MeshBasicMaterial, currentShader: THREE.WebGLProgramParametersWithUniforms) => {
+export const HolographicShaderOverride = (material: THREE.MeshBasicMaterial, currentShader: THREE.WebGLProgramParametersWithUniforms): void => {
     currentShader.uniforms.time = { value: 0 };
 
     currentShader.vertexShader = currentShader.vertexShader.replace(

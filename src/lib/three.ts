@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-export const getFrustumEdgesAtZ = (camera: THREE.PerspectiveCamera, z: number) => {
+export const getFrustumEdgesAtZ = (camera: THREE.PerspectiveCamera, z: number): { left: number; right: number; top: number; bottom: number } => {
     const vFOV = (camera.fov * Math.PI) / 180;
     const height = 2 * Math.tan(vFOV / 2) * Math.abs(z - camera.position.z);
     const width = height * camera.aspect;
@@ -133,7 +133,7 @@ export const calculateAttraction = (
     return [velocity[0] * dampening, velocity[1] * dampening];
 };
 
-export const gradTexture = (color: [string[], number[]]) => {
+export const gradTexture = (color: [string[], number[]]): THREE.Texture => {
     const c = document.createElement("canvas");
     const ct = c.getContext("2d")!;
     c.width = 16;
@@ -192,7 +192,7 @@ export const getSkyGradient = (
     return sky;
 };
 
-export const calculateParticleCount = (width: number, height: number) => {
+export const calculateParticleCount = (width: number, height: number): number => {
     const screenArea = width * height;
     const baseArea = 1920 * 1080; // Base resolution
     const baseCount = 3500;
